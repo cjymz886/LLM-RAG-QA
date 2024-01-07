@@ -1,2 +1,5 @@
 # LLM-RAG-QA
-LLM+RAG for QA
+
+## 运行说明
+
+
