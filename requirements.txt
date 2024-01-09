@@ -11,3 +11,4 @@ sentencepiece
 accelerate
 sse-starlette
 streamlit>=1.24.0
+pyfunctional==1.3.0

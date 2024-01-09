@@ -4,7 +4,8 @@ import re
 from lxml import etree
 import chardet
 import jieba.analyse
-
+from text2vec import *
+from config import Config
 
 def search_bing(query):
     """利用newbing搜索接口，用于检索与query相关的背景信息，作为检索内容
@@ -35,7 +36,7 @@ def search_bing(query):
     #只采集列表的第一页
     for sel in dom.xpath('//ol[@id="b_results"]/li/h2'):
         l = ''.join(sel.xpath('a/@href'))
-        title = ''.join(sel.xpath('a//text()')).strip()
+        title = ''.join(sel.xpath('a//text()')).split('-')[0].strip()
         if 'http' in l and l not in tmp_url and 'doc.' not in l:
             url_list.append([l,title])
             tmp_url.append(l)
@@ -63,21 +64,23 @@ class TextRecallRank():
     实现对检索内容的召回与排序
     """
 
-    def __init__(self,topd=5,topt=10, maxlen=64):
-        self.topd = topd    #召回文章的数量
-        self.topt = topt    #召回文本片段的数量
-        self.maxlen = maxlen  #召回文本片段的长度
+    def __init__(self,cfg):
+        self.topk = cfg.topk    #query关键词召回的数量
+        self.topd = cfg.topd    #召回文章的数量
+        self.topt = cfg.topt    #召回文本片段的数量
+        self.maxlen = cfg.maxlen  #召回文本片段的长度
 
 
-    def query_analyze(self,query,topk=5):
+
+    def query_analyze(self,query):
         """query的解析，目前利用jieba进行关键词提取
         input:query,topk
         output:
             keywords:{'word':[]}
             total_weight: float number
         """
-        keywords = jieba.analyse.extract_tags(query, topK=topk, withWeight=True)
-        total_weight = topk / sum([r[1] for r in keywords])
+        keywords = jieba.analyse.extract_tags(query, topK=self.topk, withWeight=True)
+        total_weight = self.topk / sum([r[1] for r in keywords])
         return keywords,total_weight
 
     def text_segmentate(self, text, maxlen, seps='\n', strips=None):
@@ -121,7 +124,8 @@ class TextRecallRank():
             score += round(weight * total_weight, 4) 
         return score
     
-    def rank_text_score(self,query,data):
+    def rank_text_by_keywords(self,query,data):
+        """通过关键词进行召回"""
         
         #query分析
         keywords,total_weight = self.query_analyze(query)
@@ -142,12 +146,13 @@ class TextRecallRank():
             if title  in recall_title_list:
                 for ct in self.text_segmentate(text,self.maxlen, seps='\n。'):
                     ct = re.sub('\s+', ' ', ct)
-                    if len(ct)<20:
+                    if len(ct)>=20:
                         sentence_score[ct] = self.recall_text_score(ct,keywords,total_weight)
 
         sentence_score = sorted(sentence_score.items(),key=lambda x:x[1],reverse=True)
         recall_sentence_list = [s[0] for s in sentence_score[:self.topt]]
         return '\n'.join(recall_sentence_list)
+
 
     def query_retrieve(self,query):
         """
@@ -156,12 +161,12 @@ class TextRecallRank():
         #利用搜索引擎获取相关信息
         data = search_bing(query)
         #对获取的相关信息进行召回与排序，得到背景信息
-        bg_text = self.rank_text_score(query,data)
+        bg_text = self.rank_text_by_keywords(query,data)
         return bg_text
 
 
-
-trr = TextRecallRank()
+cfg = Config()
+trr = TextRecallRank(cfg)
 q_searching = trr.query_retrieve
 
 

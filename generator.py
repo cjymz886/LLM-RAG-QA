@@ -5,14 +5,14 @@ import torch
 import transformers
 from transformers.generation.utils import GenerationConfig
 from retrievor import q_searching
+from config import Config
 
 class QueryGenerate():
-    def __init__(self):
-        self.model_name_or_path = r'E:\pretraing_models\torch\baichuan2-7B-Chat'
-        self.max_source_length = 767
-        self.max_target_length = 256
-        self.model_max_length = 1024
-        self.use_retrievor = False
+    def __init__(self, cfg):
+        self.model_name_or_path = cfg.model_name_or_path
+        self.max_source_length = cfg.max_source_length
+        self.max_target_length = cfg.max_target_length
+        self.model_max_length = cfg.model_max_length
         self.load_model()
 
     def load_model(self):
@@ -31,8 +31,8 @@ class QueryGenerate():
         )
         self.model.generation_config = GenerationConfig.from_pretrained(self.model_name_or_path)
     
-    def build_prompt(self,query):
-        if self.use_retrievor:
+    def build_prompt(self,query,use_retrievor):
+        if use_retrievor:
             bg_text = q_searching(query)
             #限制bg_text长度
             bg_text_len = self.max_source_length - len(query) - 30
@@ -49,7 +49,7 @@ class QueryGenerate():
     def generate(self, query):
         self.model.eval()
         with torch.autocast("cuda"):
-            prompt = self.build_prompt(query)
+            prompt = self.build_prompt(query,use_retrievor=True)
             model_inputs = self.tokenizer([prompt], max_length=self.max_source_length, truncation=True,add_special_tokens=True)
             input_ids = torch.LongTensor(model_inputs['input_ids']).to('cuda')
             out = self.model.generate(
@@ -66,8 +66,8 @@ class QueryGenerate():
             out_text = self.tokenizer.decode(out[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
         return out_text
 
-    def chat(self,query):
-        prompt = self.build_prompt(query)
+    def chat(self,query,use_retrievor=True):
+        prompt = self.build_prompt(query,use_retrievor)
         messages = []
         messages.append({"role": "user", "content": prompt})
         res = self.model.chat(self.tokenizer, messages)
@@ -75,14 +75,7 @@ class QueryGenerate():
 
 
 
-if __name__=="__main__":
-    qg = QueryGenerate()
-    q_generate = qg.generate
-    q_chat = qg.chat
 
 
-    query = '东南大学的现任校长是谁？'
-    query = '新海诚动漫《你的名字》由哪个公司出品？'
-    # res = q_generate(query)
-    res = q_chat(query)
-    print(res)
+    
+
