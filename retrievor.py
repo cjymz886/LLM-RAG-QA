@@ -4,7 +4,6 @@ import re
 from lxml import etree
 import chardet
 import jieba.analyse
-from text2vec import *
 from config import Config
 
 def search_bing(query):
