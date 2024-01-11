@@ -46,10 +46,10 @@ class QueryGenerate():
             return query
         
         
-    def generate(self, query):
+    def generate(self, query,use_retrievor=True):
         self.model.eval()
         with torch.autocast("cuda"):
-            prompt = self.build_prompt(query,use_retrievor=True)
+            prompt = self.build_prompt(query,use_retrievor)
             model_inputs = self.tokenizer([prompt], max_length=self.max_source_length, truncation=True,add_special_tokens=True)
             input_ids = torch.LongTensor(model_inputs['input_ids']).to('cuda')
             out = self.model.generate(
