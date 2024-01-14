@@ -4,6 +4,7 @@ import re
 from lxml import etree
 import chardet
 import jieba.analyse
+from text2vec import *
 from config import Config
 
 def search_bing(query):
@@ -68,6 +69,7 @@ class TextRecallRank():
         self.topd = cfg.topd    #召回文章的数量
         self.topt = cfg.topt    #召回文本片段的数量
         self.maxlen = cfg.maxlen  #召回文本片段的长度
+        self.recall_way = cfg.recall_way  #召回方式
 
 
 
@@ -133,8 +135,9 @@ class TextRecallRank():
         title_score = {}
         for line in data:
             title = line['title']
-            title_score[title] = self.recall_title_score(data,keywords,total_weight)
+            title_score[title] = self.recall_title_score(title,keywords,total_weight)
         title_score = sorted(title_score.items(),key=lambda x:x[1],reverse=True)
+        # print(title_score)
         recall_title_list = [t[0] for t in title_score[:self.topd]]
         
         #召回sentence
@@ -152,6 +155,41 @@ class TextRecallRank():
         recall_sentence_list = [s[0] for s in sentence_score[:self.topt]]
         return '\n'.join(recall_sentence_list)
 
+    def rank_text_by_text2vec(self,query,data):
+        """通过text2vec召回"""
+
+        #先召回title
+        title_list = [query]
+        for line in data:
+            title = line['title']
+            title_list.append(title)
+        title_vectors = get_vector(title_list,8)
+        title_score = get_sim(title_vectors)
+        title_score = dict(zip(title_score,range(1,len(title_list))))
+        title_score = sorted(title_score.items(),key=lambda x:x[0],reverse=True)
+        # print(title_list)
+        # print(title_score)
+        recall_title_list = [title_list[t[1]] for t in title_score[:self.topd]]
+
+
+        # 召回sentence
+        sentence_list = [query]
+        for line in data:
+            title = line['title']
+            text = line['text']
+            if title in recall_title_list:
+                for ct in self.text_segmentate(text, self.maxlen, seps='\n。'):
+                    ct = re.sub('\s+', ' ', ct)
+                    if len(ct) >= 20:
+                        sentence_list.append(ct)
+
+        sentence_vectors = get_vector(sentence_list, 8)
+        sentence_score = get_sim(sentence_vectors)
+        sentence_score = dict(zip(sentence_score, range(1, len(sentence_list))))
+        sentence_score = sorted(sentence_score.items(),key=lambda x:x[0],reverse=True)
+        recall_sentence_list = [sentence_list[s[1]] for s in sentence_score[:self.topt]]
+        return '\n'.join(recall_sentence_list)
+
 
     def query_retrieve(self,query):
         """
@@ -160,7 +198,10 @@ class TextRecallRank():
         #利用搜索引擎获取相关信息
         data = search_bing(query)
         #对获取的相关信息进行召回与排序，得到背景信息
-        bg_text = self.rank_text_by_keywords(query,data)
+        if self.recall_way == 'keyword':
+            bg_text = self.rank_text_by_keywords(query,data)
+        else:
+            bg_text = self.rank_text_by_text2vec(query,data)
         return bg_text
 
 

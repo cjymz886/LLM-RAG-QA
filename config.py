@@ -7,6 +7,8 @@ class Config():
     topt = 6    #召回文本片段的数量
     maxlen = 128  #召回文本片段的长度
     topk = 5    #query召回的关键词数量
+    bert_path = r'E:\pretraing_models\torch\text2vec-base-chinese'
+    recall_way = 'embed'  #召回方式 ,keyword,embed
 
     #generator参数
     model_name_or_path = r'E:\pretraing_models\torch\baichuan2-7B-Chat'  #llm模型位置
