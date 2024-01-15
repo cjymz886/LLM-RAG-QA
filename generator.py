@@ -40,7 +40,7 @@ class QueryGenerate():
             print("#####################bg_text###################")
             print(bg_text)
             print("#####################bg_text###################")
-            prompt ="请参考下面的<背景信息>回答“{}”的问题，要求：直接回答问题，不必做过解释。\n\n<背景信息>\n{}。".format(query,bg_text)
+            prompt ="请参考下面的<背景信息>回答“{}”的问题，要求：直接回答问题，不必做过多解释。\n\n<背景信息>\n{}。".format(query,bg_text)
             return prompt
         else:
             return query
