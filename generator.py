@@ -60,7 +60,6 @@ class QueryGenerate():
                 temperature=0.4,
                 top_k=30,
                 eos_token_id=self.tokenizer.eos_token_id,
-
             )
             out = out[:, input_ids.size()[-1]:]
             out_text = self.tokenizer.decode(out[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
